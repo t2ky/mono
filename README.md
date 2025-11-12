@@ -505,6 +505,148 @@ mono_server/
 - 車両数: 3台固定（a, b, c）
 - 駅数: 4箇所固定（1, 2, 3, 4）
 
+## デプロイ
+
+このプロジェクトはGitOps方式でオンプレK8sにデプロイされます。
+
+### アーキテクチャ
+
+- **リポジトリ**: `t2ky/mono`
+- **コンテナレジストリ**: Harbor (`harbor.n2t.app/mono`)
+- **CI/CD**: GitHub Actions
+- **GitOps**: ArgoCD
+- **URL**: https://mono.kiyo.dev
+
+### デプロイフロー
+
+1. **コードをプッシュ**
+   - `main`ブランチにプッシュ → 自動デプロイ
+
+2. **GitHub Actionsが実行**
+   - Dockerイメージをビルド
+   - Harborレジストリにプッシュ
+   - K8sマニフェストを更新（イメージタグを変更）
+   - 変更をコミット
+
+3. **ArgoCDが自動同期**
+   - マニフェストの変更を検知
+   - K8sクラスタに自動デプロイ
+   - 数分で新しいバージョンが稼働
+
+### 初回セットアップ
+
+#### 1. GitHubリポジトリの作成
+
+```bash
+# リポジトリを作成: t2ky/mono
+git remote add origin https://github.com/t2ky/mono.git
+git add .
+git commit -m "Initial commit"
+git push -u origin main
+```
+
+#### 2. GitHub Secretsの設定
+
+リポジトリの Settings > Secrets and variables > Actions で以下を設定：
+
+- `HARBOR_USERNAME`: Harborのユーザー名（例: `robot$github-actions`）
+- `HARBOR_PASSWORD`: Harborのパスワード
+
+#### 3. ArgoCDへのアプリケーション登録
+
+K8sクラスタで以下を実行：
+
+```bash
+kubectl apply -f argocd/application-production.yaml
+```
+
+### ローカルでDockerビルドテスト
+
+```bash
+# イメージをビルド
+docker build -t mono-server:test .
+
+# ローカルで実行
+docker run -p 8000:8000 mono-server:test
+
+# ブラウザで確認
+open http://localhost:8000
+```
+
+### デプロイ状態の確認
+
+```bash
+# ArgoCDで確認
+kubectl get applications -n argocd
+
+# Podの状態確認
+kubectl get pods -n mono-server-prod
+
+# ログ確認
+kubectl logs -f deployment/mono-server -n mono-server-prod
+
+# サービス確認
+kubectl get svc,ingress -n mono-server-prod
+```
+
+### トラブルシューティング
+
+#### イメージがPullできない
+
+```bash
+# Harbor認証情報の確認
+kubectl get secret harbor-registry-secret -n mono-server-prod -o yaml
+
+# 必要に応じてSecretを作成
+kubectl create secret docker-registry harbor-registry-secret \
+  --docker-server=harbor.n2t.app \
+  --docker-username=robot$github-actions \
+  --docker-password=YOUR_PASSWORD \
+  -n mono-server-prod
+```
+
+#### ArgoCDで同期できない
+
+```bash
+# ArgoCDのログ確認
+kubectl logs -n argocd deployment/argocd-application-controller
+
+# 手動同期
+kubectl -n argocd patch application mono-server-prod -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}' --type merge
+```
+
+#### Podが起動しない
+
+```bash
+# イベント確認
+kubectl describe pod -n mono-server-prod -l app=mono-server
+
+# リソース不足の確認
+kubectl top nodes
+kubectl top pods -n mono-server-prod
+```
+
+### ファイル構成
+
+```
+mono_server/
+├── .github/
+│   └── workflows/
+│       └── build-and-deploy.yaml    # CI/CDパイプライン
+├── argocd/
+│   └── application-production.yaml  # ArgoCD設定
+├── k8s/
+│   └── production.yaml              # K8sマニフェスト
+├── static/
+│   └── dashboard.html               # 管理画面UI
+├── Dockerfile                       # コンテナイメージ定義
+├── .dockerignore                    # Docker除外ファイル
+├── main.py                          # FastAPIアプリケーション
+├── models.py                        # データモデル
+├── state_manager.py                 # 状態管理ロジック
+└── requirements.txt                 # Python依存関係
+```
+
 ## ライセンス
 
 MIT
