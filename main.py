@@ -4,6 +4,8 @@ FastAPI server for circular rail vehicle management system
 import logging
 from fastapi import FastAPI, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from models import (
     CommandResponse, VehicleReport, CallRequest, InitializeRequest
 )
@@ -38,12 +40,12 @@ state_manager = StateManager()
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
-    return {
-        "message": "Circular Rail Vehicle Management System",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    """Root endpoint - redirect to dashboard"""
+    return FileResponse("static/dashboard.html")
+
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/api/v1/vehicles/{car_id}/command", response_model=CommandResponse)
