@@ -90,7 +90,15 @@
             gap: 30px;
             padding: 20px;
             min-height: 300px;
+            grid-template-areas:
+                "station1 station2"
+                "station4 station3";
         }
+
+        #station1 { grid-area: station1; }
+        #station2 { grid-area: station2; }
+        #station3 { grid-area: station3; }
+        #station4 { grid-area: station4; }
 
         .station {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
