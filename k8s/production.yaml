@@ -36,7 +36,7 @@ spec:
       - name: harbor-registry-secret
       containers:
       - name: mono-server
-        image: harbor.n2t.app/mono/mono-server:main-3e988081a7ba7e6ae1f1c14513f5bd9be782f9b4
+        image: harbor.n2t.app/mono/mono-server:main-8954b47c733523991599696dcc2a32245bc16daa
         ports:
         - containerPort: 8000
           name: http
